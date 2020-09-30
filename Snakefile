@@ -1,62 +1,29 @@
-SAMPLES = ["A", "B"]
+SAMPLE="SRR292770"
 
 rule all:
-    input:
-        "plots/quals.svg"
+   input:
+         expand("trimmed/{sample}_1.unpaired.fastq.gz", sample=SAMPLE)  
 
-rule bwa_map:
+rule trimmomatic_pe:
     input:
-        fastq="samples/{sample}.fastq",
-        idx=multiext("genome.fa", ".amb", ".ann", ".bwt", ".pac", ".sa")
-    conda:
-        "environment.yaml"
+        r1="{sample}_1.fastq.gz",
+        r2="{sample}_1.fastq.gz"
     output:
-        "mapped_reads/{sample}.bam"
-    params:
-        idx=lambda w, input: os.path.splitext(input.idx[0])[0]
+        r1="trimmed/{sample}_1.fastq.gz",
+        r2="trimmed/{sample}_2.fastq.gz",
+        # reads where trimming entirely removed the mate
+        r1_unpaired="trimmed/{sample}_1.unpaired.fastq.gz",
+        r2_unpaired="trimmed/{sample}_2.unpaired.fastq.gz"
+    log:
+        "logs/trimmomatic/{sample}.log"
+    params: 
+        adapter = "TruSeq2-PE.fa"
+    threads: 2
+    log:
+        "logs/trimmomatic/{sample}.log"
+    benchmark:
+        "benchmarks/trimmomatic/{sample}.benchmark.txt"
     shell:
-        "bwa mem {params.idx} {input.fastq} | samtools view -Sb - > {output}"
-
-rule samtools_sort:
-    input:
-        "mapped_reads/{sample}.bam"
-    output:
-        "sorted_reads/{sample}.bam"
-    conda:
-        "environment.yaml"
-    shell:
-        "samtools sort -T sorted_reads/{wildcards.sample} "
-        "-O bam {input} > {output}"
-
-rule samtools_index:
-    input:
-        "sorted_reads/{sample}.bam"
-    output:
-        "sorted_reads/{sample}.bam.bai"
-    conda:
-        "environment.yaml"
-    shell:
-        "samtools index {input}"
-
-rule bcftools_call:
-    input:
-        fa="genome.fa",
-        bam=expand("sorted_reads/{sample}.bam", sample=SAMPLES),
-        bai=expand("sorted_reads/{sample}.bam.bai", sample=SAMPLES)
-    output:
-        "calls/all.vcf"
-    conda:
-        "environment.yaml"
-    shell:
-        "samtools mpileup -g -f {input.fa} {input.bam} | "
-        "bcftools call -mv - > {output}"
-
-rule plot_quals:
-    input:
-        "calls/all.vcf"
-    output:
-        "plots/quals.svg"
-    conda:
-        "environment.yaml"
-    script:
-        "plot-quals.py"
+      "trimmomatic PE -threads {threads} -phred33 "
+      "{input.r1} {input.r1} {output.r1} {output.r1_unpaired} {output.r2} {output.r2_unpaired} "
+      "ILLUMINACLIP:{params.adapter}:2:30:10 LEADING:3 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:36 2> {log}"

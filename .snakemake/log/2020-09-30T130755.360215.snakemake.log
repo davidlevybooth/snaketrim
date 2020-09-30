@@ -1,0 +1,9 @@
+Building DAG of jobs...
+MissingInputException in line 7 of /home/data/FLINT/snaketrim/Snakefile:
+Missing input files for rule bwa_map:
+demobucket-12347/genome.fa.ann
+demobucket-12347/genome.fa.bwt
+demobucket-12347/samples/A.fastq
+demobucket-12347/genome.fa.amb
+demobucket-12347/genome.fa.sa
+demobucket-12347/genome.fa.pac
